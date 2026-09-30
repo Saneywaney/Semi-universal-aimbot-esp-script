@@ -1,0 +1,727 @@
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+
+--============================================================
+-- SETTINGS
+--============================================================
+
+local AimEnabled = false
+local ESPEnabled = true
+local TeamCheck = true
+local WallCheck = true
+
+local FOV = 150
+local AimStrength = 0.25
+local TargetPart = "Head"
+
+--============================================================
+-- GUI
+--============================================================
+
+local Gui = Instance.new("ScreenGui")
+Gui.Name = "StudioAimDebugger"
+Gui.ResetOnSpawn = false
+Gui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+
+local Main = Instance.new("Frame")
+Main.Size = UDim2.fromOffset(280, 370)
+Main.Position = UDim2.fromOffset(25, 150)
+Main.BackgroundColor3 = Color3.fromRGB(25,25,30)
+Main.BorderSizePixel = 0
+Main.Parent = Gui
+
+local MainCorner = Instance.new("UICorner")
+MainCorner.CornerRadius = UDim.new(0,10)
+MainCorner.Parent = Main
+
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1,0,0,40)
+Title.BackgroundTransparency = 1
+Title.Text = "Studio Aim Debugger"
+Title.TextColor3 = Color3.new(1,1,1)
+Title.Font = Enum.Font.GothamBold
+Title.TextSize = 18
+Title.Parent = Main
+
+local function createButton(text, y)
+
+	local button = Instance.new("TextButton")
+
+	button.Size = UDim2.new(1,-30,0,35)
+	button.Position = UDim2.fromOffset(15,y)
+
+	button.BackgroundColor3 =
+		Color3.fromRGB(45,45,55)
+
+	button.TextColor3 =
+		Color3.new(1,1,1)
+
+	button.Text = text
+	button.Font = Enum.Font.Gotham
+	button.TextSize = 14
+
+	button.Parent = Main
+
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0,6)
+	corner.Parent = button
+
+	return button
+end
+
+local AimButton =
+	createButton("Aim Assist: OFF",50)
+
+local ESPButton =
+	createButton("Hitbox ESP: ON",90)
+
+local TeamButton =
+	createButton("Team Check: ON",130)
+
+local WallButton =
+	createButton("Wall Check: ON",170)
+
+--============================================================
+-- FOV SLIDER
+--============================================================
+
+local FOVLabel = Instance.new("TextLabel")
+FOVLabel.Size = UDim2.new(1,-30,0,25)
+FOVLabel.Position = UDim2.fromOffset(15,215)
+FOVLabel.BackgroundTransparency = 1
+FOVLabel.TextColor3 = Color3.new(1,1,1)
+FOVLabel.TextXAlignment = Enum.TextXAlignment.Left
+FOVLabel.Font = Enum.Font.Gotham
+FOVLabel.TextSize = 13
+FOVLabel.Text = "FOV: "..FOV
+FOVLabel.Parent = Main
+
+local FOVSlider = Instance.new("TextButton")
+FOVSlider.Size = UDim2.new(1,-30,0,12)
+FOVSlider.Position = UDim2.fromOffset(15,245)
+FOVSlider.BackgroundColor3 =
+	Color3.fromRGB(60,60,70)
+FOVSlider.Text = ""
+FOVSlider.AutoButtonColor = false
+FOVSlider.Parent = Main
+
+local FOVCorner = Instance.new("UICorner")
+FOVCorner.CornerRadius = UDim.new(1,0)
+FOVCorner.Parent = FOVSlider
+
+local FOVKnob = Instance.new("Frame")
+FOVKnob.Size = UDim2.fromOffset(12,20)
+FOVKnob.AnchorPoint = Vector2.new(.5,.5)
+FOVKnob.Position = UDim2.new(.333,0,.5,0)
+FOVKnob.BackgroundColor3 = Color3.new(1,1,1)
+FOVKnob.BorderSizePixel = 0
+FOVKnob.Parent = FOVSlider
+
+local fovDragging = false
+
+local function updateFOV(x)
+
+	local start =
+		FOVSlider.AbsolutePosition.X
+
+	local width =
+		FOVSlider.AbsoluteSize.X
+
+	local percent =
+		math.clamp(
+			(x-start)/width,
+			0,
+			1
+		)
+
+	FOV =
+		math.floor(
+			25 + percent*375
+		)
+
+	FOVLabel.Text =
+		"FOV: "..FOV
+
+	FOVKnob.Position =
+		UDim2.new(
+			percent,
+			0,
+			.5,
+			0
+		)
+end
+
+FOVSlider.MouseButton1Down:Connect(function()
+
+	fovDragging = true
+
+	updateFOV(
+		UserInputService:GetMouseLocation().X
+	)
+end)
+
+--============================================================
+-- AIM STRENGTH SLIDER
+--============================================================
+
+local StrengthLabel = Instance.new("TextLabel")
+StrengthLabel.Size = UDim2.new(1,-30,0,25)
+StrengthLabel.Position = UDim2.fromOffset(15,275)
+StrengthLabel.BackgroundTransparency = 1
+StrengthLabel.TextColor3 = Color3.new(1,1,1)
+StrengthLabel.TextXAlignment = Enum.TextXAlignment.Left
+StrengthLabel.Font = Enum.Font.Gotham
+StrengthLabel.TextSize = 13
+StrengthLabel.Text =
+	"Aim Strength: 25%"
+StrengthLabel.Parent = Main
+
+local StrengthSlider = Instance.new("TextButton")
+StrengthSlider.Size = UDim2.new(1,-30,0,12)
+StrengthSlider.Position = UDim2.fromOffset(15,305)
+StrengthSlider.BackgroundColor3 =
+	Color3.fromRGB(60,60,70)
+StrengthSlider.Text = ""
+StrengthSlider.AutoButtonColor = false
+StrengthSlider.Parent = Main
+
+local StrengthCorner = Instance.new("UICorner")
+StrengthCorner.CornerRadius = UDim.new(1,0)
+StrengthCorner.Parent = StrengthSlider
+
+local StrengthKnob = Instance.new("Frame")
+StrengthKnob.Size = UDim2.fromOffset(12,20)
+StrengthKnob.AnchorPoint = Vector2.new(.5,.5)
+StrengthKnob.Position =
+	UDim2.new(.25,0,.5,0)
+StrengthKnob.BackgroundColor3 =
+	Color3.new(1,1,1)
+StrengthKnob.BorderSizePixel = 0
+StrengthKnob.Parent = StrengthSlider
+
+local strengthDragging = false
+
+local function updateStrength(x)
+
+	local start =
+		StrengthSlider.AbsolutePosition.X
+
+	local width =
+		StrengthSlider.AbsoluteSize.X
+
+	local percent =
+		math.clamp(
+			(x-start)/width,
+			0,
+			1
+		)
+
+	AimStrength =
+		.05 + percent*.95
+
+	StrengthLabel.Text =
+		"Aim Strength: " ..
+		math.floor(AimStrength*100) ..
+		"%"
+
+	StrengthKnob.Position =
+		UDim2.new(
+			percent,
+			0,
+			.5,
+			0
+		)
+end
+
+StrengthSlider.MouseButton1Down:Connect(function()
+
+	strengthDragging = true
+
+	updateStrength(
+		UserInputService:GetMouseLocation().X
+	)
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+
+	if input.UserInputType ==
+		Enum.UserInputType.MouseButton1 then
+
+		fovDragging = false
+		strengthDragging = false
+	end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+
+	if input.UserInputType ==
+		Enum.UserInputType.MouseMovement then
+
+		local x =
+			UserInputService:GetMouseLocation().X
+
+		if fovDragging then
+			updateFOV(x)
+		end
+
+		if strengthDragging then
+			updateStrength(x)
+		end
+	end
+end)
+
+--============================================================
+-- FOV CIRCLE
+--============================================================
+
+local FOVCircle = Instance.new("Frame")
+FOVCircle.AnchorPoint =
+	Vector2.new(.5,.5)
+
+FOVCircle.Position =
+	UDim2.fromScale(.5,.5)
+
+FOVCircle.Size =
+	UDim2.fromOffset(
+		FOV*2,
+		FOV*2
+	)
+
+FOVCircle.BackgroundTransparency = 1
+FOVCircle.BorderSizePixel = 0
+FOVCircle.Parent = Gui
+
+local CircleCorner = Instance.new("UICorner")
+CircleCorner.CornerRadius = UDim.new(1,0)
+CircleCorner.Parent = FOVCircle
+
+local CircleStroke = Instance.new("UIStroke")
+CircleStroke.Thickness = 1
+CircleStroke.Transparency = .25
+CircleStroke.Color = Color3.new(1,1,1)
+CircleStroke.Parent = FOVCircle
+
+--============================================================
+-- HIDE / SHOW
+--============================================================
+
+local HideButton = Instance.new("TextButton")
+
+HideButton.Size =
+	UDim2.fromOffset(90,32)
+
+HideButton.Position =
+	UDim2.fromOffset(25,110)
+
+HideButton.BackgroundColor3 =
+	Color3.fromRGB(35,35,40)
+
+HideButton.TextColor3 =
+	Color3.new(1,1,1)
+
+HideButton.Text = "Hide GUI"
+
+HideButton.Font =
+	Enum.Font.GothamBold
+
+HideButton.TextSize = 13
+HideButton.Parent = Gui
+
+local guiHidden = false
+
+HideButton.MouseButton1Click:Connect(function()
+
+	guiHidden = not guiHidden
+
+	Main.Visible = not guiHidden
+
+	HideButton.Text =
+		guiHidden and
+		"Show GUI" or
+		"Hide GUI"
+end)
+
+--============================================================
+-- BUTTON EVENTS
+--============================================================
+
+AimButton.MouseButton1Click:Connect(function()
+
+	AimEnabled = not AimEnabled
+
+	AimButton.Text =
+		"Aim Assist: " ..
+		(AimEnabled and "ON" or "OFF")
+end)
+
+ESPButton.MouseButton1Click:Connect(function()
+
+	ESPEnabled = not ESPEnabled
+
+	ESPButton.Text =
+		"Hitbox ESP: " ..
+		(ESPEnabled and "ON" or "OFF")
+end)
+
+TeamButton.MouseButton1Click:Connect(function()
+
+	TeamCheck = not TeamCheck
+
+	TeamButton.Text =
+		"Team Check: " ..
+		(TeamCheck and "ON" or "OFF")
+end)
+
+WallButton.MouseButton1Click:Connect(function()
+
+	WallCheck = not WallCheck
+
+	WallButton.Text =
+		"Wall Check: " ..
+		(WallCheck and "ON" or "OFF")
+end)
+
+--============================================================
+-- HITBOX ESP
+--============================================================
+
+local BodyParts = {
+
+	"Head",
+
+	"UpperTorso",
+	"LowerTorso",
+
+	"LeftUpperArm",
+	"LeftLowerArm",
+	"LeftHand",
+
+	"RightUpperArm",
+	"RightLowerArm",
+	"RightHand",
+
+	"LeftUpperLeg",
+	"LeftLowerLeg",
+	"LeftFoot",
+
+	"RightUpperLeg",
+	"RightLowerLeg",
+	"RightFoot",
+
+	-- R6
+
+	"Torso",
+	"Left Arm",
+	"Right Arm",
+	"Left Leg",
+	"Right Leg"
+}
+
+local function addHitbox(part)
+
+	if part:FindFirstChild(
+		"DeveloperHitbox"
+	) then
+		return
+	end
+
+	local box =
+		Instance.new(
+			"BoxHandleAdornment"
+		)
+
+	box.Name =
+		"DeveloperHitbox"
+
+	box.Adornee = part
+
+	box.Size =
+		part.Size
+
+	box.Color3 =
+		Color3.fromRGB(
+			255,
+			70,
+			70
+		)
+
+	box.Transparency = .7
+	box.AlwaysOnTop = true
+	box.ZIndex = 5
+
+	box.Parent = part
+end
+
+local function setupCharacter(character)
+
+	for _, name in ipairs(
+		BodyParts
+	) do
+
+		local part =
+			character:FindFirstChild(
+				name
+			)
+
+		if part
+			and part:IsA("BasePart") then
+
+			addHitbox(part)
+		end
+	end
+end
+
+local function setupPlayer(player)
+
+	if player == LocalPlayer then
+		return
+	end
+
+	if player.Character then
+		setupCharacter(
+			player.Character
+		)
+	end
+
+	player.CharacterAdded:Connect(
+		function(character)
+
+			task.wait(.5)
+
+			setupCharacter(
+				character
+			)
+		end
+	)
+end
+
+for _, player in ipairs(
+	Players:GetPlayers()
+) do
+
+	setupPlayer(player)
+end
+
+Players.PlayerAdded:Connect(
+	setupPlayer
+)
+
+--============================================================
+-- WALL CHECK
+--============================================================
+
+local function isVisible(
+	character,
+	target
+)
+
+	if not WallCheck then
+		return true
+	end
+
+	local origin =
+		Camera.CFrame.Position
+
+	local direction =
+		target.Position-origin
+
+	local params =
+		RaycastParams.new()
+
+	params.FilterType =
+		Enum.RaycastFilterType.Exclude
+
+	params.FilterDescendantsInstances = {
+		LocalPlayer.Character,
+		character
+	}
+
+	local result =
+		workspace:Raycast(
+			origin,
+			direction,
+			params
+		)
+
+	return result == nil
+end
+
+--============================================================
+-- TARGET SELECTION
+--============================================================
+
+local function getTarget()
+
+	local mouse =
+		UserInputService:GetMouseLocation()
+
+	local closest = nil
+	local closestDistance = FOV
+
+	for _, player in ipairs(
+		Players:GetPlayers()
+	) do
+
+		if player ~= LocalPlayer
+			and player.Character then
+
+			if TeamCheck
+				and player.Team ==
+				LocalPlayer.Team then
+
+				continue
+			end
+
+			local humanoid =
+				player.Character:
+				FindFirstChildOfClass(
+					"Humanoid"
+				)
+
+			local target =
+				player.Character:
+				FindFirstChild(
+					TargetPart
+				)
+
+			if humanoid
+				and humanoid.Health > 0
+				and target then
+
+				local position,
+					onScreen =
+					Camera:WorldToViewportPoint(
+						target.Position
+					)
+
+				if onScreen then
+
+					local distance =
+						(
+							Vector2.new(
+								position.X,
+								position.Y
+							)
+							- mouse
+						).Magnitude
+
+					if distance <
+						closestDistance then
+
+						if isVisible(
+							player.Character,
+							target
+						) then
+
+							closest =
+								target
+
+							closestDistance =
+								distance
+						end
+					end
+				end
+			end
+		end
+	end
+
+	return closest
+end
+
+--============================================================
+-- AIM / WEAPON DIRECTION
+--============================================================
+
+local function aimAt(target)
+
+	if not target then
+		return
+	end
+
+	local origin =
+		Camera.CFrame.Position
+
+	local direction =
+		(target.Position-origin).Unit
+
+	local desired =
+		CFrame.lookAt(
+			origin,
+			origin+direction
+		)
+
+	Camera.CFrame =
+		Camera.CFrame:Lerp(
+			desired,
+			AimStrength
+		)
+end
+
+--============================================================
+-- MAIN LOOP
+--============================================================
+
+RunService.RenderStepped:Connect(
+	function()
+
+		-- FOV circle
+
+		FOVCircle.Size =
+			UDim2.fromOffset(
+				FOV*2,
+				FOV*2
+			)
+
+		-- ESP
+
+		for _, player in ipairs(
+			Players:GetPlayers()
+		) do
+
+			if player ~= LocalPlayer
+				and player.Character then
+
+				for _, name in ipairs(
+					BodyParts
+				) do
+
+					local part =
+						player.Character:
+						FindFirstChild(
+							name
+						)
+
+					if part then
+
+						local box =
+							part:FindFirstChild(
+								"DeveloperHitbox"
+							)
+
+						if box then
+
+							box.Visible =
+								ESPEnabled
+						end
+					end
+				end
+			end
+		end
+
+		-- Aim
+
+		if AimEnabled then
+
+			local target =
+				getTarget()
+
+			if target then
+				aimAt(target)
+			end
+		end
+	end
+)
