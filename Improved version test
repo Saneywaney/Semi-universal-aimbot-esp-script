@@ -1,0 +1,563 @@
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+
+local LocalPlayer = Players.LocalPlayer
+
+--------------------------------------------------
+-- SETTINGS
+--------------------------------------------------
+
+local BoxEnabled = false
+local DotEnabled = false
+local HighlightEnabled = false
+local DistanceEnabled = false
+
+local ESPColor = Color3.fromRGB(255, 255, 255)
+
+local ESPObjects = {}
+
+--------------------------------------------------
+-- GUI
+--------------------------------------------------
+
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "ESP_GUI"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+
+local MainFrame = Instance.new("Frame")
+MainFrame.Size = UDim2.new(0, 260, 0, 330)
+MainFrame.Position = UDim2.new(0, 15, 0, 15)
+MainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+MainFrame.BorderSizePixel = 0
+MainFrame.Parent = ScreenGui
+
+local MainCorner = Instance.new("UICorner")
+MainCorner.CornerRadius = UDim.new(0, 10)
+MainCorner.Parent = MainFrame
+
+--------------------------------------------------
+-- TITLE
+--------------------------------------------------
+
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1, 0, 0, 38)
+Title.BackgroundTransparency = 1
+Title.Text = "ESP Controls"
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.TextSize = 18
+Title.Font = Enum.Font.GothamBold
+Title.Parent = MainFrame
+
+--------------------------------------------------
+-- BUTTON CREATOR
+--------------------------------------------------
+
+local function CreateButton(text, y)
+
+	local Button = Instance.new("TextButton")
+
+	Button.Size = UDim2.new(0, 230, 0, 34)
+	Button.Position = UDim2.new(0, 15, 0, y)
+	Button.BackgroundColor3 = Color3.fromRGB(55, 55, 55)
+	Button.BorderSizePixel = 0
+	Button.TextColor3 = Color3.fromRGB(255, 255, 255)
+	Button.TextSize = 14
+	Button.Font = Enum.Font.GothamBold
+	Button.Text = text
+	Button.Parent = MainFrame
+
+	local Corner = Instance.new("UICorner")
+	Corner.CornerRadius = UDim.new(0, 7)
+	Corner.Parent = Button
+
+	return Button
+end
+
+local BoxButton = CreateButton("Box ESP: OFF", 45)
+local DotButton = CreateButton("Dot ESP: OFF", 83)
+local HighlightButton = CreateButton("Highlight ESP: OFF", 121)
+local DistanceButton = CreateButton("Distance: OFF", 159)
+
+--------------------------------------------------
+-- COLOR SECTION
+--------------------------------------------------
+
+local ColorTitle = Instance.new("TextLabel")
+ColorTitle.Size = UDim2.new(1, 0, 0, 25)
+ColorTitle.Position = UDim2.new(0, 0, 0, 198)
+ColorTitle.BackgroundTransparency = 1
+ColorTitle.Text = "ESP Color"
+ColorTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+ColorTitle.TextSize = 14
+ColorTitle.Font = Enum.Font.GothamBold
+ColorTitle.Parent = MainFrame
+
+--------------------------------------------------
+-- RGB INPUTS
+--------------------------------------------------
+
+local function CreateRGBInput(label, x)
+
+	local Label = Instance.new("TextLabel")
+	Label.Size = UDim2.new(0, 25, 0, 25)
+	Label.Position = UDim2.new(0, x, 0, 225)
+	Label.BackgroundTransparency = 1
+	Label.Text = label
+	Label.TextColor3 = Color3.fromRGB(255, 255, 255)
+	Label.Font = Enum.Font.GothamBold
+	Label.TextSize = 13
+	Label.Parent = MainFrame
+
+	local Box = Instance.new("TextBox")
+	Box.Size = UDim2.new(0, 45, 0, 25)
+	Box.Position = UDim2.new(0, x + 22, 0, 225)
+	Box.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+	Box.BorderSizePixel = 0
+	Box.TextColor3 = Color3.fromRGB(255, 255, 255)
+	Box.Text = "255"
+	Box.TextSize = 13
+	Box.Font = Enum.Font.Gotham
+	Box.ClearTextOnFocus = false
+	Box.Parent = MainFrame
+
+	local Corner = Instance.new("UICorner")
+	Corner.CornerRadius = UDim.new(0, 5)
+	Corner.Parent = Box
+
+	return Box
+end
+
+local RBox = CreateRGBInput("R", 15)
+local GBox = CreateRGBInput("G", 90)
+local BBox = CreateRGBInput("B", 165)
+
+--------------------------------------------------
+-- COLOR PREVIEW
+--------------------------------------------------
+
+local ColorPreview = Instance.new("Frame")
+ColorPreview.Size = UDim2.new(0, 230, 0, 25)
+ColorPreview.Position = UDim2.new(0, 15, 0, 260)
+ColorPreview.BackgroundColor3 = ESPColor
+ColorPreview.BorderSizePixel = 0
+ColorPreview.Parent = MainFrame
+
+local PreviewCorner = Instance.new("UICorner")
+PreviewCorner.CornerRadius = UDim.new(0, 6)
+PreviewCorner.Parent = ColorPreview
+
+local ApplyButton = CreateButton("Apply Color", 292)
+
+--------------------------------------------------
+-- ESP CREATION
+--------------------------------------------------
+
+local function CreateESP(player)
+
+	if player == LocalPlayer then
+		return
+	end
+
+	if ESPObjects[player] then
+		return
+	end
+
+	local data = {}
+
+	--------------------------------------------------
+	-- BOX
+	--------------------------------------------------
+
+	local Box = Instance.new("BoxHandleAdornment")
+
+	Box.Name = "ESP_Box"
+	Box.Size = Vector3.new(4, 6, 2)
+	Box.Color3 = ESPColor
+	Box.Transparency = 0.5
+	Box.AlwaysOnTop = true
+	Box.ZIndex = 5
+	Box.Visible = false
+	Box.Parent = workspace
+
+	data.Box = Box
+
+	--------------------------------------------------
+	-- DOT + DISTANCE
+	--------------------------------------------------
+
+	local Billboard = Instance.new("BillboardGui")
+
+	Billboard.Name = "ESP_Dot"
+	Billboard.Size = UDim2.new(0, 100, 0, 55)
+	Billboard.StudsOffset = Vector3.new(0, 3, 0)
+	Billboard.AlwaysOnTop = true
+	Billboard.Enabled = false
+	Billboard.Parent = ScreenGui
+
+	local Dot = Instance.new("Frame")
+
+	Dot.Size = UDim2.new(0, 12, 0, 12)
+	Dot.Position = UDim2.new(0.5, -6, 0, 0)
+	Dot.BackgroundColor3 = ESPColor
+	Dot.BorderSizePixel = 0
+	Dot.Parent = Billboard
+
+	local DotCorner = Instance.new("UICorner")
+	DotCorner.CornerRadius = UDim.new(1, 0)
+	DotCorner.Parent = Dot
+
+	data.Billboard = Billboard
+	data.Dot = Dot
+
+	--------------------------------------------------
+	-- DISTANCE TEXT
+	--------------------------------------------------
+
+	local DistanceText = Instance.new("TextLabel")
+
+	DistanceText.Size = UDim2.new(1, 0, 0, 25)
+	DistanceText.Position = UDim2.new(0, 0, 0, 14)
+	DistanceText.BackgroundTransparency = 1
+	DistanceText.TextColor3 = ESPColor
+	DistanceText.TextStrokeTransparency = 0.5
+	DistanceText.TextSize = 12
+	DistanceText.Font = Enum.Font.GothamBold
+	DistanceText.Text = ""
+	DistanceText.Visible = false
+	DistanceText.Parent = Billboard
+
+	data.DistanceText = DistanceText
+
+	--------------------------------------------------
+	-- HIGHLIGHT
+	--------------------------------------------------
+
+	local Highlight = Instance.new("Highlight")
+
+	Highlight.Name = "ESP_Highlight"
+	Highlight.FillColor = ESPColor
+	Highlight.OutlineColor = ESPColor
+	Highlight.FillTransparency = 0.75
+	Highlight.OutlineTransparency = 0
+	Highlight.Enabled = false
+	Highlight.Parent = workspace
+
+	data.Highlight = Highlight
+
+	ESPObjects[player] = data
+end
+
+--------------------------------------------------
+-- REMOVE ESP
+--------------------------------------------------
+
+local function RemoveESP(player)
+
+	local data = ESPObjects[player]
+
+	if not data then
+		return
+	end
+
+	for _, object in pairs(data) do
+
+		if typeof(object) == "Instance" then
+			object:Destroy()
+		end
+
+	end
+
+	ESPObjects[player] = nil
+end
+
+--------------------------------------------------
+-- UPDATE ESP
+--------------------------------------------------
+
+local function UpdateESP()
+
+	local localCharacter = LocalPlayer.Character
+	local localRoot =
+		localCharacter
+		and localCharacter:FindFirstChild("HumanoidRootPart")
+
+	for player, data in pairs(ESPObjects) do
+
+		local character = player.Character
+		local humanoid =
+			character
+			and character:FindFirstChildOfClass("Humanoid")
+
+		local root =
+			character
+			and character:FindFirstChild("HumanoidRootPart")
+
+		local valid =
+			character
+			and humanoid
+			and humanoid.Health > 0
+			and root
+
+		if valid then
+
+			--------------------------------------------------
+			-- BOX
+			--------------------------------------------------
+
+			data.Box.Adornee = root
+			data.Box.Visible = BoxEnabled
+
+			--------------------------------------------------
+			-- DOT
+			--------------------------------------------------
+
+			data.Billboard.Adornee = root
+
+			if DotEnabled or DistanceEnabled then
+				data.Billboard.Enabled = true
+			else
+				data.Billboard.Enabled = false
+			end
+
+			data.Dot.Visible = DotEnabled
+
+			--------------------------------------------------
+			-- DISTANCE
+			--------------------------------------------------
+
+			if DistanceEnabled and localRoot then
+
+				local distance =
+					(localRoot.Position - root.Position).Magnitude
+
+				data.DistanceText.Text =
+					math.floor(distance) .. " studs"
+
+				data.DistanceText.Visible = true
+
+			else
+
+				data.DistanceText.Visible = false
+
+			end
+
+			--------------------------------------------------
+			-- HIGHLIGHT
+			--------------------------------------------------
+
+			data.Highlight.Adornee = character
+			data.Highlight.Enabled = HighlightEnabled
+
+		else
+
+			data.Box.Visible = false
+			data.Billboard.Enabled = false
+			data.Highlight.Enabled = false
+
+		end
+	end
+end
+
+--------------------------------------------------
+-- UPDATE BUTTONS
+--------------------------------------------------
+
+local function UpdateButtons()
+
+	if BoxEnabled then
+		BoxButton.Text = "Box ESP: ON"
+		BoxButton.BackgroundColor3 = Color3.fromRGB(50, 120, 50)
+	else
+		BoxButton.Text = "Box ESP: OFF"
+		BoxButton.BackgroundColor3 = Color3.fromRGB(55, 55, 55)
+	end
+
+	if DotEnabled then
+		DotButton.Text = "Dot ESP: ON"
+		DotButton.BackgroundColor3 = Color3.fromRGB(50, 120, 50)
+	else
+		DotButton.Text = "Dot ESP: OFF"
+		DotButton.BackgroundColor3 = Color3.fromRGB(55, 55, 55)
+	end
+
+	if HighlightEnabled then
+		HighlightButton.Text = "Highlight ESP: ON"
+		HighlightButton.BackgroundColor3 = Color3.fromRGB(50, 120, 50)
+	else
+		HighlightButton.Text = "Highlight ESP: OFF"
+		HighlightButton.BackgroundColor3 = Color3.fromRGB(55, 55, 55)
+	end
+
+	if DistanceEnabled then
+		DistanceButton.Text = "Distance: ON"
+		DistanceButton.BackgroundColor3 = Color3.fromRGB(50, 120, 50)
+	else
+		DistanceButton.Text = "Distance: OFF"
+		DistanceButton.BackgroundColor3 = Color3.fromRGB(55, 55, 55)
+	end
+end
+
+--------------------------------------------------
+-- APPLY COLOR
+--------------------------------------------------
+
+local function GetNumber(Box)
+
+	local value = tonumber(Box.Text)
+
+	if not value then
+		return 255
+	end
+
+	return math.clamp(math.floor(value), 0, 255)
+end
+
+local function ApplyColor()
+
+	local R = GetNumber(RBox)
+	local G = GetNumber(GBox)
+	local B = GetNumber(BBox)
+
+	RBox.Text = tostring(R)
+	GBox.Text = tostring(G)
+	BBox.Text = tostring(B)
+
+	ESPColor = Color3.fromRGB(R, G, B)
+
+	ColorPreview.BackgroundColor3 = ESPColor
+
+	for _, data in pairs(ESPObjects) do
+
+		data.Box.Color3 = ESPColor
+
+		data.Dot.BackgroundColor3 = ESPColor
+
+		data.DistanceText.TextColor3 = ESPColor
+
+		data.Highlight.FillColor = ESPColor
+		data.Highlight.OutlineColor = ESPColor
+
+	end
+end
+
+--------------------------------------------------
+-- BUTTON EVENTS
+--------------------------------------------------
+
+BoxButton.MouseButton1Click:Connect(function()
+
+	BoxEnabled = not BoxEnabled
+
+	UpdateButtons()
+	UpdateESP()
+
+end)
+
+DotButton.MouseButton1Click:Connect(function()
+
+	DotEnabled = not DotEnabled
+
+	UpdateButtons()
+	UpdateESP()
+
+end)
+
+HighlightButton.MouseButton1Click:Connect(function()
+
+	HighlightEnabled = not HighlightEnabled
+
+	UpdateButtons()
+	UpdateESP()
+
+end)
+
+DistanceButton.MouseButton1Click:Connect(function()
+
+	DistanceEnabled = not DistanceEnabled
+
+	UpdateButtons()
+	UpdateESP()
+
+end)
+
+ApplyButton.MouseButton1Click:Connect(function()
+
+	ApplyColor()
+
+end)
+
+--------------------------------------------------
+-- RIGHT SHIFT MENU
+--------------------------------------------------
+
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+
+	if gameProcessed then
+		return
+	end
+
+	if input.KeyCode == Enum.KeyCode.RightShift then
+
+		MainFrame.Visible = not MainFrame.Visible
+
+	end
+
+end)
+
+--------------------------------------------------
+-- PLAYERS
+--------------------------------------------------
+
+for _, player in ipairs(Players:GetPlayers()) do
+
+	CreateESP(player)
+
+	if player ~= LocalPlayer then
+
+		player.CharacterAdded:Connect(function()
+
+			task.wait(0.2)
+			UpdateESP()
+
+		end)
+
+	end
+end
+
+Players.PlayerAdded:Connect(function(player)
+
+	CreateESP(player)
+
+	player.CharacterAdded:Connect(function()
+
+		task.wait(0.2)
+		UpdateESP()
+
+	end)
+
+end)
+
+Players.PlayerRemoving:Connect(function(player)
+
+	RemoveESP(player)
+
+end)
+
+--------------------------------------------------
+-- UPDATE LOOP
+--------------------------------------------------
+
+RunService.RenderStepped:Connect(function()
+
+	UpdateESP()
+
+end)
+
+--------------------------------------------------
+-- INITIALIZE
+--------------------------------------------------
+
+UpdateButtons()
+UpdateESP()
